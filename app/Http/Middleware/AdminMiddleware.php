@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Log;
 
 class AdminMiddleware
 {
@@ -13,28 +13,25 @@ class AdminMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next)
     {
-        // Check if user is logged in and has admin role
         if (!session('user') || strtolower(session('user')['role']) !== 'admin') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized. Admin access required.'
-            ], 401);
+            Log::warning('Unauthorized access attempt to admin route', [
+                'user' => session('user'),
+                'ip' => $request->ip(),
+                'path' => $request->path()
+            ]);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized. Admin access required.'
+                ], 403);
+            }
+            
+            return redirect('/login')->with('error', 'Unauthorized. Admin access required.');
         }
 
-        // Check for JWT token
-        $token = session('jwt_token');
-        if (!$token) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No token found'
-            ], 401);
-        }
-
-        // Add token to request header
-        $request->headers->set('Authorization', 'Bearer ' . $token);
-        
         return $next($request);
-    }
+    } 
 } 

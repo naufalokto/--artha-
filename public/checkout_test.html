@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uji Checkout Midtrans</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .logs {
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+    </style>
+    
+    <!-- Midtrans Snap JavaScript -->
+    <script type="text/javascript"
+            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            data-client-key="SB-Mid-client-44JyAuImP_XPOzeZ">
+    </script>
+</head>
+<body>
+    <h1>Test Checkout Midtrans</h1>
+    
+    <div class="card">
+        <h2>Status Midtrans</h2>
+        <div id="status">Memeriksa ketersediaan Midtrans...</div>
+    </div>
+    
+    <div class="card">
+        <h2>Token Manual</h2>
+        <p>Jika Anda sudah memiliki token Midtrans, masukkan di sini:</p>
+        <input type="text" id="token-input" placeholder="Token Midtrans" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+        <button onclick="useManualToken()">Gunakan Token</button>
+    </div>
+    
+    <div class="card">
+        <h2>Log Aksi</h2>
+        <div class="logs" id="logs"></div>
+    </div>
+    
+    <script>
+        // Helper untuk menambahkan log
+        function log(message) {
+            const logsEl = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            logsEl.innerHTML += `<div>[${time}] ${message}</div>`;
+            logsEl.scrollTop = logsEl.scrollHeight;
+        }
+        
+        // Cek ketersediaan Midtrans
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusEl = document.getElementById('status');
+            
+            if (typeof snap !== 'undefined') {
+                statusEl.innerHTML = '<span style="color: green;">✅ Midtrans Snap tersedia</span>';
+                log('Midtrans Snap berhasil dimuat');
+            } else {
+                statusEl.innerHTML = '<span style="color: red;">❌ Midtrans Snap tidak tersedia</span>';
+                log('ERROR: Midtrans Snap gagal dimuat');
+            }
+        });
+        
+        // Gunakan token yang dimasukkan manual
+        function useManualToken() {
+            const token = document.getElementById('token-input').value.trim();
+            
+            if (!token) {
+                alert('Silakan masukkan token Midtrans');
+                return;
+            }
+            
+            if (typeof snap === 'undefined') {
+                alert('Midtrans Snap tidak tersedia. Periksa koneksi internet atau konfigurasi.');
+                return;
+            }
+            
+            log(`Membuka popup pembayaran dengan token: ${token}`);
+            
+            try {
+                snap.pay(token, {
+                    onSuccess: function(result) {
+                        log('SUKSES: Pembayaran berhasil');
+                        log(JSON.stringify(result, null, 2));
+                        alert('Pembayaran berhasil!');
+                    },
+                    onPending: function(result) {
+                        log('PENDING: Pembayaran dalam proses');
+                        log(JSON.stringify(result, null, 2));
+                        alert('Pembayaran dalam proses. Silakan selesaikan pembayaran Anda.');
+                    },
+                    onError: function(result) {
+                        log('ERROR: Pembayaran gagal');
+                        log(JSON.stringify(result, null, 2));
+                        alert('Pembayaran gagal!');
+                    },
+                    onClose: function() {
+                        log('INFO: Popup pembayaran ditutup tanpa menyelesaikan pembayaran');
+                        alert('Anda menutup popup pembayaran tanpa menyelesaikan pembayaran.');
+                    }
+                });
+            } catch (e) {
+                log(`ERROR: Gagal membuka popup pembayaran: ${e.message}`);
+                alert(`Gagal membuka popup pembayaran: ${e.message}`);
+            }
+        }
+    </script>
+</body>
+</html> 

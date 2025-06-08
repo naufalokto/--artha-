@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Midtrans Diagnostic Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .status-ok {
+            color: green;
+            font-weight: bold;
+        }
+        .status-error {
+            color: red;
+            font-weight: bold;
+        }
+        .console {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 0.8em;
+        }
+    </style>
+    
+    <!-- Load Midtrans Snap with the client key from midtrans.env -->
+    <script type="text/javascript"
+            src="https://app.sandbox.midtrans.com/snap/snap.js"
+            data-client-key="SB-Mid-client-44JyAuImP_XPOzeZ">
+    </script>
+</head>
+<body>
+    <h1>Midtrans Diagnostic Tool</h1>
+    
+    <div class="card">
+        <h2>Midtrans Status</h2>
+        <div id="midtrans-status">Checking Midtrans availability...</div>
+    </div>
+    
+    <div class="card">
+        <h2>Client Key Verification</h2>
+        <p>The client key being used is: <code>SB-Mid-client-44JyAuImP_XPOzeZ</code></p>
+        <p>If this is not correct, edit this file and update the client key in the Midtrans Snap script tag.</p>
+    </div>
+    
+    <div class="card">
+        <h2>Manual Token Testing</h2>
+        <p>Enter a Midtrans token to test payment directly:</p>
+        <input type="text" id="token-input" placeholder="Paste your Midtrans token here">
+        <button onclick="testManualToken()">Test Token</button>
+    </div>
+    
+    <div class="card">
+        <h2>Console Log</h2>
+        <div class="console" id="console"></div>
+    </div>
+    
+    <script>
+        // Logger function
+        function log(message, type = 'info') {
+            const consoleEl = document.getElementById('console');
+            const now = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            // Create log content with timestamp
+            logEntry.innerHTML = `<span class="timestamp">[${now}]</span> ${message}`;
+            
+            // Add color based on type
+            if (type === 'error') {
+                logEntry.style.color = 'red';
+            } else if (type === 'success') {
+                logEntry.style.color = 'green';
+            } else if (type === 'warning') {
+                logEntry.style.color = 'orange';
+            }
+            
+            // Add to console
+            consoleEl.appendChild(logEntry);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            
+            // Also log to browser console
+            console.log(`[${now}] ${message}`);
+        }
+        
+        // Check Midtrans availability
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusEl = document.getElementById('midtrans-status');
+            
+            log('Checking Midtrans Snap availability...');
+            
+            if (typeof snap !== 'undefined') {
+                statusEl.innerHTML = '<span class="status-ok">✓ Midtrans Snap is available</span>';
+                log('Midtrans Snap loaded successfully', 'success');
+            } else {
+                statusEl.innerHTML = '<span class="status-error">✗ Midtrans Snap is NOT available</span>';
+                log('ERROR: Midtrans Snap failed to load', 'error');
+                log('Possible causes:', 'warning');
+                log('1. Internet connection issues', 'warning');
+                log('2. Invalid client key', 'warning');
+                log('3. Content Security Policy blocking the script', 'warning');
+            }
+        });
+        
+        // Test manual token
+        function testManualToken() {
+            const token = document.getElementById('token-input').value.trim();
+            
+            if (!token) {
+                alert('Please enter a Midtrans token');
+                log('ERROR: No token provided', 'error');
+                return;
+            }
+            
+            log(`Testing payment with token: ${token.substring(0, 10)}...`);
+            
+            if (typeof snap === 'undefined') {
+                log('ERROR: Midtrans Snap is not available', 'error');
+                alert('Midtrans Snap is not available. Check your internet connection or client key.');
+                return;
+            }
+            
+            try {
+                log('Opening Midtrans payment popup...');
+                
+                snap.pay(token, {
+                    onSuccess: function(result) {
+                        log('PAYMENT SUCCESS: ' + JSON.stringify(result), 'success');
+                    },
+                    onPending: function(result) {
+                        log('PAYMENT PENDING: ' + JSON.stringify(result), 'warning');
+                    },
+                    onError: function(result) {
+                        log('PAYMENT ERROR: ' + JSON.stringify(result), 'error');
+                    },
+                    onClose: function() {
+                        log('Payment popup closed without completing payment', 'warning');
+                    }
+                });
+            } catch (error) {
+                log(`ERROR: Failed to open payment popup: ${error.message}`, 'error');
+                alert('Failed to open payment popup: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

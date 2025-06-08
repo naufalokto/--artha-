@@ -1,15 +1,22 @@
 <?php
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\SalesController;
+use App\Http\Controllers\DebugController;
+use App\Http\Controllers\ManagerController;
 
 // Public routes
 Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+    return redirect('/login');
+});
 
 Route::get('/about', function () {
     return view('about');
 })->name('about');
+
+Route::get('/products', function () {
+    return view('public.products');
+})->name('products');
 
 Route::get('/signup', function () {
     return view('signup');
@@ -19,17 +26,50 @@ Route::get('/login', function () {
     return view('login');
 })->name('login');
 
+// Products API routes (public)
+Route::get('/api/products', [ApiController::class, 'getProducts'])->name('products.list');
+Route::get('/api/stocks', [ApiController::class, 'getProducts'])->name('stocks.list');
+
+// Customer API routes
+Route::prefix('api/customer')->group(function () {
+    Route::get('/transactions/detail', [ApiController::class, 'viewTransactionDetailByID']);
+    Route::get('/transactions/summary', [ApiController::class, 'viewTransactionSummary']);
+    Route::get('/cart', [ApiController::class, 'getUserCart']);
+    Route::post('/cart', [ApiController::class, 'addToCart']);
+    Route::delete('/cart', [ApiController::class, 'deleteCartItems']);
+});
+
+// Payment callback route
+Route::get('/payment/callback', function () {
+    // Just redirect to customer dashboard - the frontend JS will handle the callback parameters
+    return redirect('/customer/dashboard');
+})->name('payment.callback');
+
 // Authentication routes
-Route::post('/signup', [ApiController::class, 'signup']);
-Route::post('/login', [ApiController::class, 'login']);
-Route::post('/logout', [ApiController::class, 'logout'])->name('logout');
-Route::post('/midtrans/webhook', [ApiController::class, 'midtransWebhook']);
+Route::post('/signup', [ApiController::class, 'signup'])->name('auth.signup');
+Route::post('/login', [ApiController::class, 'login'])->name('auth.login');
+Route::post('/logout', [ApiController::class, 'logout'])->name('auth.logout');
+Route::get('/logout', [ApiController::class, 'logout'])->name('auth.logout.get');
 
 // Add this route for products
 Route::get('/products', function () {
     return view('products');
 })->name('products');
 
+// Protected routes
+Route::prefix(['auth.check'])->group(function () {
+    Route::post('/logout', [ApiController::class, 'logout'])->name('auth.logout');
+    
+    // Admin routes
+    // Route::prefix(['admin'])->prefix('admin')->group(function () {
+    //     Route::get('/dashboard', function () {
+    //         return view('admin.dashboard');
+    //     });
+    //     Route::get('/users', [ApiController::class, 'getUsers']);
+    //     Route::post('/create-account', [ApiController::class, 'createAccount']);
+    //     Route::delete('/users/{id}', [ApiController::class, 'deleteUser']);
+    // });
+    
 // Admin routes
 Route::prefix('admin')->group(function () {
     Route::get('/dashboard', function () {
@@ -65,44 +105,47 @@ Route::prefix('admin')->group(function () {
 // Manager routes
 Route::prefix('manager')->group(function () {
     Route::get('/dashboard', function () {
-        if (!session('jwt_token') || !session('user') || strtolower(session('user')['role']) !== 'manager') {
-            return redirect('/login');
+        if (!session('user') || strtolower(session('user')['role']) !== 'manager') {
+            return redirect('/login')->with('error', 'Unauthorized. Manager access required.');
         }
         return view('manager.dashboard');
     })->name('manager.dashboard');
-    
-    Route::post('/gemini/analyze', [ApiController::class, 'analyzeAllProducts']);
-    Route::get('/transaction-view', [ApiController::class, 'salesRecap']);
 });
 
-// Sales routes
-Route::prefix('sales')->group(function () {
-    Route::get('/dashboard', function () {
-        if (!session('jwt_token') || !session('user') || strtolower(session('user')['role']) !== 'sales') {
-            return redirect('/login');
-        }
-        return view('sales.dashboard');
-    })->name('sales.dashboard');
-    
-    Route::post('/products/store', [ApiController::class, 'insertProductAndStock'])->name('sales.products.store');
-    Route::put('/products/stock/update', [ApiController::class, 'updateProductStock'])->name('sales.products.stock.update');
-    Route::get('/products/stock', [ApiController::class, 'getStock'])->name('sales.products.stock');
-    
-    Route::post('/raw-materials/store', [ApiController::class, 'insertRawMaterial'])->name('sales.raw-materials.store');
-    Route::get('/raw-materials', [ApiController::class, 'getRawMaterialsSorted'])->name('sales.raw-materials.index');
+    // Sales routes
+    Route::prefix(['sales'])->prefix('sales')->group(function () {
+        Route::get('/dashboard', function () {
+            return view('sales.dashboard');
+        });
+        Route::get('/stocks', [ApiController::class, 'getStock']);
+        Route::get('/products', [ApiController::class, 'getProducts']);
+    });
 });
 
 // Customer routes
-Route::get('/customer/dashboard', function () {
-    \Log::info('Session user', session('user'));
-    if (!session('jwt_token') || !session('user') || strtolower(session('user')['role']) !== 'customer') {
-        return redirect('/login');
-    }
-    return view('customer.dashboard');
+Route::prefix('customer')->group(function () {
+    Route::get('/dashboard', function () {
+        if (!session('user') || strtolower(session('user')['role']) !== 'customer') {
+            return redirect('/login')->with('error', 'Unauthorized. Customer access required.');
+        }
+        return view('customer.dashboard');
+    })->name('customer.dashboard');
 
-    Route::get('/transactions', [ApiController::class, 'viewTransaction']);
-    Route::post('/checkout', [ApiController::class, 'checkout']);
-    Route::post('/cart', [ApiController::class, 'addToCart']);
-    Route::get('/cart', [ApiController::class, 'getUserCart']);
-    Route::delete('/cart', [ApiController::class, 'deleteCartItems']);
+    Route::get('/products', [ApiController::class, 'getProducts'])->name('customer.products');
+    Route::get('/transactions/summary', [ApiController::class, 'viewTransactionSummary'])->name('customer.transactions.summary');
+    Route::get('/transactions/detail', [ApiController::class, 'viewTransactionDetailByID'])->name('customer.transactions.detail');
+    Route::post('/checkout', [ApiController::class, 'checkout'])->name('customer.checkout');
+    Route::post('/cart', [ApiController::class, 'addToCart'])->name('customer.cart.add');
+    Route::get('/cart', [ApiController::class, 'getUserCart'])->name('customer.cart.index');
+    Route::delete('/cart', [ApiController::class, 'deleteCartItems'])->name('customer.cart.delete');
 });
+
+// Debug route for Midtrans configuration
+Route::get('/debug/midtrans-config', [DebugController::class, 'midtransConfig']);
+
+// Test route for Midtrans configuration
+Route::get('/test-midtrans', function () {
+    return view('test-midtrans');
+});
+// Other routes
+Route::post('/midtrans/webhook', [ApiController::class, 'midtransWebhook']);

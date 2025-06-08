@@ -6,25 +6,25 @@
             <form id="setProductForm" class="space-y-4">
                 <div>
                     <label for="product_name" class="block text-sm font-medium text-gray-700">Product Name</label>
-                    <input type="text" name="product[product_name]" id="product_name" required
+                    <input type="text" name="product_name" id="product_name" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
                 <div>
-                    <label for="price" class="block text-sm font-medium text-gray-700">Price</label>
-                    <input type="number" name="product[price]" id="price" required min="0"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label for="note" class="block text-sm font-medium text-gray-700">Note</label>
-                    <textarea name="product[note]" id="note"
+                    <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" id="description" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                 </div>
 
                 <div>
-                    <label for="stock" class="block text-sm font-medium text-gray-700">Initial Stock</label>
-                    <input type="number" name="stock[stock]" id="stock" required min="1"
+                    <label for="price" class="block text-sm font-medium text-gray-700">Price</label>
+                    <input type="number" name="price" id="price" required min="0"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700">Initial Stock</label>
+                    <input type="number" name="quantity" id="quantity" required min="1"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
@@ -49,23 +49,32 @@ $(document).ready(function() {
     $('#setProductForm').on('submit', function(e) {
         e.preventDefault();
 
-        const formData = $(this).serializeArray();
-        const data = {
-            product: {},
-            stock: {}
+        const formData = {
+            product: {
+                product_name: $('#product_name').val(),
+                note: $('#description').val(),
+                price: parseFloat($('#price').val())
+            },
+            stock: {
+                stock: parseInt($('#quantity').val())
+            }
         };
 
-        formData.forEach(item => {
-            const [section, field] = item.name.match(/\[(.*?)\]/g).map(x => x.replace(/[\[\]]/g, ''));
-            data[section][field] = item.value;
-        });
+        // Log data yang akan dikirim
+        console.log('Sending data:', formData);
 
         $.ajax({
             url: '{{ route("sales.products.store") }}',
             method: 'POST',
-            data: JSON.stringify(data),
+            data: JSON.stringify(formData),
             contentType: 'application/json',
+            headers: {
+                'Authorization': 'Bearer {{ session("jwt_token") }}',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
             success: function(response) {
+                console.log('Response:', response);
                 Swal.fire({
                     title: 'Success!',
                     text: 'Product has been added successfully',
@@ -78,9 +87,14 @@ $(document).ready(function() {
                     if (typeof loadDashboardData === 'function') {
                         loadDashboardData();
                     }
+                    // Refresh stock data if we're on stock page
+                    if (typeof loadStockData === 'function') {
+                        loadStockData();
+                    }
                 });
             },
             error: function(xhr) {
+                console.error('Error:', xhr);
                 const message = xhr.responseJSON?.message || 'An error occurred while saving the product';
                 Swal.fire({
                     title: 'Error!',

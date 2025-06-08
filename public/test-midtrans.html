@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Midtrans Direct JavaScript Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #333; }
+        button { margin-top: 20px; padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+    <!-- Include Midtrans Snap with hardcoded client key -->
+    <script type="text/javascript" 
+            src="https://app.sandbox.midtrans.com/snap/snap.js" 
+            data-client-key="SB-Mid-client-44JyAuImP_XPOzeZ">
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Midtrans Direct JavaScript Test</h1>
+        
+        <p>This page tests loading the Midtrans Snap.js with a hardcoded client key.</p>
+        
+        <div id="js-check">Checking Midtrans snap.js...</div>
+        
+        <button id="test-btn">
+            Test Midtrans Connection
+        </button>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const jsCheck = document.getElementById('js-check');
+        
+        if (typeof snap !== 'undefined') {
+            jsCheck.innerHTML = '✅ Midtrans snap.js successfully loaded<br>Client Key: SB-Mid-client-44JyAuImP_XPOzeZ';
+            jsCheck.style.color = 'green';
+        } else {
+            jsCheck.textContent = '❌ Midtrans snap.js failed to load';
+            jsCheck.style.color = 'red';
+        }
+        
+        document.getElementById('test-btn').addEventListener('click', function() {
+            if (typeof snap === 'undefined') {
+                alert('Midtrans snap.js not loaded. Cannot perform test.');
+                return;
+            }
+            
+            alert('Midtrans snap.js is properly loaded with client key: SB-Mid-client-44JyAuImP_XPOzeZ');
+        });
+    });
+    </script>
+</body>
+</html> 
